@@ -1,78 +1,166 @@
-<p align="center"><img src="https://res.cloudinary.com/dtfbvvkyp/image/upload/v1566331377/laravel-logolockup-cmyk-red.svg" width="400"></p>
+# Docker Laravel
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/license.svg" alt="License"></a>
-</p>
-
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 1500 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
-
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[British Software Development](https://www.britishsoftware.co)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- [UserInsights](https://userinsights.com)
-- [Fragrantica](https://www.fragrantica.com)
-- [SOFTonSOFA](https://softonsofa.com/)
-- [User10](https://user10.com)
-- [Soumettre.fr](https://soumettre.fr/)
-- [CodeBrisk](https://codebrisk.com)
-- [1Forge](https://1forge.com)
-- [TECPRESSO](https://tecpresso.co.jp/)
-- [Runtime Converter](http://runtimeconverter.com/)
-- [WebL'Agence](https://weblagence.com/)
-- [Invoice Ninja](https://www.invoiceninja.com)
-- [iMi digital](https://www.imi-digital.de/)
-- [Earthlink](https://www.earthlink.ro/)
-- [Steadfast Collective](https://steadfastcollective.com/)
-- [We Are The Robots Inc.](https://watr.mx/)
-- [Understand.io](https://www.understand.io/)
-- [Abdel Elrafa](https://abdelelrafa.com)
-- [Hyper Host](https://hyper.host)
-- [Appoly](https://www.appoly.co.uk)
-- [OP.GG](https://op.gg)
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Cài đặt
+    1. Dockerfile
+        
+        ```bash
+        FROM php:7.2-fpm-alpine
+        
+        WORKDIR /var/www/html
+        
+        # Install PHP Composer
+        RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+        
+        COPY . .
+        ```
+        
+        - Không cần CMD vì bên trong php:7.2-fpm-alpine đã có CMD rồi.
+    2. build image
+        
+        ```bash
+        $ docker build -t learning-docker/docker-laravel:v1 .
+        ```
+        
+    3. docker-compose.yml
+        
+        ```bash
+        version: '3.4'
+        
+        services:
+          #PHP Service
+          app:
+            image: learning-docker/docker-laravel:v1
+            restart: unless-stopped
+            volumes:
+              - ./:/var/www/html
+        
+          #Nginx Service
+          webserver:
+            image: nginx:1.17-alpine
+            restart: unless-stopped
+            ports:
+              - "8000:80"
+            volumes:
+              - ./:/var/www/html
+              - ./nginx.conf:/etc/nginx/conf.d/default.conf
+        ```
+        
+    4. nginx.conf
+        
+        ```bash
+        server {
+            listen 80;
+            index index.php index.html;
+        
+            error_log  /var/log/nginx/error.log;
+            access_log /var/log/nginx/access.log;
+        
+            root /var/www/html/public;
+        
+            location ~ \.php$ {
+                try_files $uri =404;
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+                fastcgi_pass app:9000;
+                fastcgi_index index.php;
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                fastcgi_param PATH_INFO $fastcgi_path_info;
+                fastcgi_hide_header X-Powered-By;
+            }
+        
+            location / {
+                try_files $uri $uri/ /index.php?$query_string;
+            }
+        }
+        ```
+        
+        - **fastcgi_pass app:9000;** có nghĩ khi có request gửi đến nginx, nginx sẽ chuyển request đó tới PHP-FPM đang lắng nghe ở host tên là app và port 9000, app ở đây nắm giữ địa chỉ của service app (container app).
+        - EXPOSE 9000: nhằm mục đích chấp nhận các container khác tương tác thông qua tên service và port 9000.
+    5. Tạo .env
+        
+        ```bash
+        APP_NAME=Laravel
+        APP_ENV=local
+        APP_KEY=
+        APP_DEBUG=true
+        APP_URL=http://localhost
+        
+        LOG_CHANNEL=stack
+        
+        DB_CONNECTION=mysql
+        DB_HOST=127.0.0.1
+        DB_PORT=3306
+        DB_DATABASE=laravel
+        DB_USERNAME=root
+        DB_PASSWORD=
+        
+        BROADCAST_DRIVER=log
+        CACHE_DRIVER=file
+        QUEUE_CONNECTION=sync
+        SESSION_DRIVER=cookie
+        SESSION_LIFETIME=120
+        
+        REDIS_HOST=127.0.0.1
+        REDIS_PASSWORD=null
+        REDIS_PORT=6379
+        
+        MAIL_DRIVER=smtp
+        MAIL_HOST=smtp.mailtrap.io
+        MAIL_PORT=2525
+        MAIL_USERNAME=null
+        MAIL_PASSWORD=null
+        MAIL_ENCRYPTION=null
+        MAIL_FROM_ADDRESS=null
+        MAIL_FROM_NAME="${APP_NAME}"
+        
+        AWS_ACCESS_KEY_ID=
+        AWS_SECRET_ACCESS_KEY=
+        AWS_DEFAULT_REGION=us-east-1
+        AWS_BUCKET=
+        
+        PUSHER_APP_ID=
+        PUSHER_APP_KEY=
+        PUSHER_APP_SECRET=
+        PUSHER_APP_CLUSTER=mt1
+        
+        MIX_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+        MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+        ```
+        
+    6. run
+        
+        ```bash
+        $ docker-compose up
+        ```
+        
+    7. composer install
+        
+        ```bash
+        $ docker-compose exec app composer install
+        ```
+        
+    8. Thay đổi permission với user www-data
+        
+        ```bash
+        $ sudo chown -R 82:82 .
+        ```
+        
+        - để trùng với user www-data trong nginx
+2. Khác
+    1. Không copy file nginx.conf trong service app (sử dụng .dockerignore)
+        1. .dockerignore
+            
+            ```bash
+            nginx.conf
+            ```
+            
+        2. set quyền cho file .dockerignore
+            
+            ```bash
+            $ sudo chown 82:82 .dockerignore
+            ```
+            
+        3. build image
+        4. run
+3. Tài liệu tham khảo
+    1. [https://viblo.asia/p/dockerize-ung-dung-laravel-vyDZOao75wj](https://viblo.asia/p/dockerize-ung-dung-laravel-vyDZOao75wj)
